@@ -1,6 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const fs = require("fs");
+const bcrypt = require("bcrypt");
 
 const PORT = process.env.PORT || 8050;
 
@@ -50,5 +52,48 @@ app.post("/posts", async (req, res) => {
   await storePosts(updatedPosts);
   res.status(201).json({ message: "Stored new post.", post: newPost });
 });
+
+app.delete("/posts/:id", async (req, res) => {
+  const existingPosts = await getStoredPosts();
+  const postId = req.params.id;
+  const updatedPosts = existingPosts.filter((post) => post.id !== postId);
+  await storePosts(updatedPosts);
+  res.status(200).json({ message: "Deleted post.", id: postId });
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const data = JSON.parse(fs.readFileSync("users.json", "utf8"));
+
+    if (!data.users) {
+      return res
+        .status(500)
+        .json({ success: false, message: "No users in data" });
+    }
+
+    const user = data.users.find((user) => user.username === username);
+
+    // console.log(`Found user: ${JSON.stringify(user)}`);
+
+    if (user && bcrypt.compareSync(password, user.password)) {
+      res.json({ success: true });
+    } else {
+      res.json({ success: false });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// // const bcrypt = require('bcrypt');
+// const saltRounds = 10;
+// const plainTextPassword = "minic888";
+
+// bcrypt.hash(plainTextPassword, saltRounds, function (err, hash) {
+//   // Store hash in your password DB.
+//   console.log(hash);
+// });
 
 app.listen(PORT, console.log(`Server started at port ${PORT}.`));
